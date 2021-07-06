@@ -1,6 +1,6 @@
 # Word Jumble
 
-A little command-line tool to solve word games like [New York Times _Spelling Bee_](https://www.nytimes.com/puzzles/spelling-bee). This permits the reuse of letters, making it unsuitable for [Scrabble](https://scrabble.hasbro.com/en-us).
+A little command-line tool to solve word games like [New York Times _Spelling Bee_](https://www.nytimes.com/puzzles/spelling-bee). By default, the reuse of letters is permitted. The `-c` (`--consume`) flag disables letter reuse, making it suitable for [Scrabble](https://scrabble.hasbro.com/en-us) or similar games.
 
 ## Usage
 
@@ -9,12 +9,13 @@ A little command-line tool to solve word games like [New York Times _Spelling Be
 ```bash
 wordjumble \
   [-v|--verbose] \
+  [-c|--consume] \
   [-d|--dict <dictionary>] \
   [--use-array] \
   string_1 [string_2] [string_...] [string_n]
 ```
 
-This will launch wordjumble loading the specified dictionary (or using the default `2of12inf`). Each string will be checked against the dictionary, separated by `------`. The `--dict` parameter can be used with any of the dictionaries from the `list` command (see below). The `--use-array` parameter tells the application to use the `arraytrie` implementation instead of the `maptrie` implementation.
+This will launch wordjumble loading the specified dictionary (or using the default `2of12inf`). Each string will be checked against the dictionary, separated by `------`. The `--dict` parameter can be used with any of the dictionaries from the `list` command (see below). The `--consume` parameter disables letter reuse unless the letter is explicitly duplicated in the input. The `--use-array` parameter tells the application to use the `arraytrie` implementation instead of the `maptrie` implementation.
 
 #### Example
 
@@ -30,6 +31,14 @@ ed
 fed
 fee
 feed
+```
+
+```bash
+$ ./wordjumble -c abc def
+cab
+------
+def
+ed
 ```
 
 ### REPL mode

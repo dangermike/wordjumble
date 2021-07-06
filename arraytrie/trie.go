@@ -1,5 +1,7 @@
 package arraytrie
 
+import helper "github.com/dangermike/wordjumble/trie"
+
 // Trie is a time-efficient method for storing sets of strings where the
 // search time is proportional to the length of the string, not the size of the
 // set of stored values.
@@ -59,20 +61,21 @@ func contains(at *trie, word []byte) bool {
 
 // PermuteAll returns all permutations of the provided letters, allowing
 // duplicates, that appear in the set of loaded words.
-func permuteAll(at *trie, letters []byte) [][]byte {
-	retval := permuteInner(at, letters)
+func permuteAll(at *trie, letters []byte, consume bool) [][]byte {
+	retval := permuteInner(at, letters, consume)
 	for i := 0; i < len(retval); i++ {
 		// reverse by starting at each end and swapping as we go
 		for a, b := 0, len(retval[i])-1; a < b; a, b = a+1, b-1 {
 			retval[i][a], retval[i][b] = retval[i][b], retval[i][a]
 		}
 	}
-	return retval
+
+	return helper.UniqueifyResults(retval)
 }
 
 // permuteInner builds up in reverse, which lets us avoid copying
-func permuteInner(at *trie, letters []byte) [][]byte {
-	if len(letters) == 0 || at == nil {
+func permuteInner(at *trie, letters []byte, consume bool) [][]byte {
+	if at == nil {
 		return nil
 	}
 
@@ -81,9 +84,15 @@ func permuteInner(at *trie, letters []byte) [][]byte {
 		retval = append(retval, []byte{})
 	}
 
-	for _, letter := range letters {
+	for i := 0; i < len(letters); i++ {
+		letter := letters[i]
 		if at[letter] != nil {
-			for _, child := range permuteInner(at[letter], letters) {
+			next := letters
+			if consume {
+				letters[0], letters[i] = letters[i], letters[0]
+				next = next[1:]
+			}
+			for _, child := range permuteInner(at[letter], next, consume) {
 				retval = append(retval, append(child, letter))
 			}
 		}

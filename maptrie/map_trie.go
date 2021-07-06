@@ -1,11 +1,13 @@
 package maptrie
 
+import helper "github.com/dangermike/wordjumble/trie"
+
 type Trie struct {
 	trie  trie
 	count int
 }
 
-func New() *Trie {
+func New() helper.Trie {
 	return &Trie{
 		trie:  trie{},
 		count: 0,
@@ -22,8 +24,8 @@ func (m *Trie) LoadString(word string) bool {
 	return m.Load([]byte(word))
 }
 
-func (m *Trie) PermuteAll(letters []byte) [][]byte {
-	return permuteAll(m.trie, []byte(letters))
+func (m *Trie) PermuteAll(letters []byte, consume bool) [][]byte {
+	return permuteAll(m.trie, []byte(letters), consume)
 }
 
 func (m *Trie) Count() int {

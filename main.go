@@ -51,6 +51,11 @@ func main() {
 				Aliases: []string{"v"},
 				Usage:   "Get wordy with those words",
 			},
+			&cli.BoolFlag{
+				Name:    "consume",
+				Aliases: []string{"c"},
+				Usage:   "Consume letters (only use each letter once)",
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -104,20 +109,20 @@ func appMain(c *cli.Context) error {
 
 	args := c.Args()
 	if 0 < args.Len() {
-		return runWords(ctx, args.Slice(), t)
+		return runWords(ctx, args.Slice(), t, c.Bool("consume"))
 	}
 	message.NewPrinter(language.English).Printf("Loaded dictionary %s: %d words\n", c.String("dict"), t.Count())
-	return runREPL(ctx, t)
+	return runREPL(ctx, t, c.Bool("consume"))
 }
 
-func runREPL(ctx context.Context, t trie) error {
+func runREPL(ctx context.Context, t trie, consume bool) error {
 	s := bufio.NewScanner(os.Stdin)
 	os.Stdout.WriteString("words> ")
 	for s.Scan() {
 		if s.Text() == "" {
 			return nil
 		}
-		runWord(ctx, s.Text(), t)
+		runWord(ctx, s.Text(), t, consume)
 		os.Stdout.WriteString("words> ")
 	}
 	if s.Err() == io.EOF {
@@ -126,21 +131,21 @@ func runREPL(ctx context.Context, t trie) error {
 	return s.Err()
 }
 
-func runWords(ctx context.Context, words []string, t trie) error {
+func runWords(ctx context.Context, words []string, t trie, consume bool) error {
 	for i, word := range words {
 		if i > 0 {
 			fmt.Println("------")
 		}
-		runWord(ctx, word, t)
+		runWord(ctx, word, t, consume)
 	}
 	return nil
 }
 
-func runWord(ctx context.Context, word string, t trie) {
+func runWord(ctx context.Context, word string, t trie, consume bool) {
 	start := time.Now()
 	cnt := 0
 
-	for _, word := range t.PermuteAll([]byte(word)) {
+	for _, word := range t.PermuteAll([]byte(word), consume) {
 		os.Stdout.Write(word)
 		os.Stdout.Write(newline)
 		cnt++
@@ -188,7 +193,7 @@ type trie interface {
 	Load(word []byte) bool
 	LoadString(word string) bool
 	Count() int
-	PermuteAll(letters []byte) [][]byte
+	PermuteAll(letters []byte, consume bool) [][]byte
 	Contains(letters []byte) bool
 	ContainsString(word string) bool
 }
