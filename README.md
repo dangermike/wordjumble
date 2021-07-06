@@ -7,7 +7,11 @@ A little command-line tool to solve word games like [New York Times _Spelling Be
 ### Test one or more strings
 
 ```bash
-wordjumble [-v|--verbose] [-d|--dict <dictionary>] [--use-array] string_1 [string_2] [string_...] [string_n]
+wordjumble \
+  [-v|--verbose] \
+  [-d|--dict <dictionary>] \
+  [--use-array] \
+  string_1 [string_2] [string_...] [string_n]
 ```
 
 This will launch wordjumble loading the specified dictionary (or using the default `2of12inf`). Each string will be checked against the dictionary, separated by `------`. The `--dict` parameter can be used with any of the dictionaries from the `list` command (see below). The `--use-array` parameter tells the application to use the `arraytrie` implementation instead of the `maptrie` implementation.
