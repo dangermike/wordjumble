@@ -84,6 +84,8 @@ words_alpha
 
 There are two implementations in this application, both based on a [trie](https://en.wikipedia.org/wiki/Trie) structure -- An array-based trie or a map-based trie. For only unaccented Latin characters, the array-based true should be faster, but if you want to support dictionaries with large character sets, the array can take multiple steps per character. This is where the map-based implementation is possibly more effective. I haven't put any non-Latin dictionaries into the code, but the reason for this little toy was to play around with exactly that.
 
+These trie implementations have another problem: false positives. Because each rune is split into bytes, the bytes of a particular rune are not held together. That means that the the implementation can return incorrect results. The most correct form would be a map of tries based on runes, though that would have a different interface.
+
 ## Dictionaries
 
 The effectiveness of this kind of tool is tied to how well the dictionary matches the dictionary in the game. To that end, I've included a couple of different dictionaries.
