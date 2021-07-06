@@ -91,10 +91,10 @@ func appMain(c *cli.Context) error {
 	ctx := logging.NewContext(c.Context, logger)
 
 	if c.Bool("use-array") {
-		t = &atWrapper{}
+		t = arraytrie.New()
 		logger.Debug("using array trie")
 	} else {
-		t = &mtWrapper{}
+		t = maptrie.New()
 		logger.Debug("using map trie")
 	}
 
@@ -114,6 +114,9 @@ func runREPL(ctx context.Context, t trie) error {
 	s := bufio.NewScanner(os.Stdin)
 	os.Stdout.WriteString("words> ")
 	for s.Scan() {
+		if s.Text() == "" {
+			return nil
+		}
 		runWord(ctx, s.Text(), t)
 		os.Stdout.WriteString("words> ")
 	}
@@ -183,44 +186,9 @@ func loadWords(ctx context.Context, dict string, callback func(word []byte) bool
 
 type trie interface {
 	Load(word []byte) bool
+	LoadString(word string) bool
 	Count() int
 	PermuteAll(letters []byte) [][]byte
-}
-
-type mtWrapper struct {
-	trie  maptrie.Trie
-	count int
-}
-
-func (m *mtWrapper) Load(word []byte) bool {
-	m.trie = maptrie.Load(m.trie, word)
-	m.count++
-	return true
-}
-
-func (m *mtWrapper) PermuteAll(letters []byte) [][]byte {
-	return maptrie.PermuteAll(m.trie, []byte(letters))
-}
-
-func (m *mtWrapper) Count() int {
-	return m.count
-}
-
-type atWrapper struct {
-	trie  *arraytrie.Trie
-	count int
-}
-
-func (a *atWrapper) Load(word []byte) bool {
-	a.trie = arraytrie.Load(a.trie, word)
-	a.count++
-	return true
-}
-
-func (a *atWrapper) PermuteAll(letters []byte) [][]byte {
-	return arraytrie.PermuteAll(a.trie, []byte(letters))
-}
-
-func (a *atWrapper) Count() int {
-	return a.count
+	Contains(letters []byte) bool
+	ContainsString(word string) bool
 }

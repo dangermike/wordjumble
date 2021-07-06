@@ -7,10 +7,10 @@ A little command-line tool to solve word games like [New York Times _Spelling Be
 ### Test one or more strings
 
 ```bash
-wordjumble [-v|--verbose] [-d|--dict <dictionary>] string_1 [string_2] [string_...] [string_n]
+wordjumble [-v|--verbose] [-d|--dict <dictionary>] [--use-array] string_1 [string_2] [string_...] [string_n]
 ```
 
-This will launch wordjumble loading the specified dictionary (or using the default `2of12inf`). Each string will be checked against the dictionary, separated by `------`. The `--dict` parameter can be used with any of the dictionaries from the `list` command (see below).
+This will launch wordjumble loading the specified dictionary (or using the default `2of12inf`). Each string will be checked against the dictionary, separated by `------`. The `--dict` parameter can be used with any of the dictionaries from the `list` command (see below). The `--use-array` parameter tells the application to use the `arraytrie` implementation instead of the `maptrie` implementation.
 
 #### Example
 
@@ -48,7 +48,7 @@ words_alpha
 
 ## Implementation
 
-There are two implementations in this application, both based on a [trie](https://en.wikipedia.org/wiki/Trie) structure -- An array-based trie or a map-based trie. For only unaccented Latin characters, the array-based true should be faster, but if you want to support dictionaries with large character sets, the array consumes too much memory. This is where the map-based implementation is more effective. I haven't put any non-Latin dictionaries into the code, but the reason for this little toy was to play around with exactly that.
+There are two implementations in this application, both based on a [trie](https://en.wikipedia.org/wiki/Trie) structure -- An array-based trie or a map-based trie. For only unaccented Latin characters, the array-based true should be faster, but if you want to support dictionaries with large character sets, the array can take multiple steps per character. This is where the map-based implementation is possibly more effective. I haven't put any non-Latin dictionaries into the code, but the reason for this little toy was to play around with exactly that.
 
 ## Dictionaries
 

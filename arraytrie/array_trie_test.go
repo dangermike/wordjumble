@@ -10,26 +10,30 @@ import (
 
 func TestEmpty(t *testing.T) {
 	at := arraytrie.New()
-	require.False(t, arraytrie.ContainsString(at, ""))
-	require.False(t, arraytrie.ContainsString(at, "x"))
+	require.False(t, at.ContainsString(""))
+	require.False(t, at.ContainsString("x"))
 	at = nil
-	require.False(t, arraytrie.ContainsString(at, ""))
-	require.False(t, arraytrie.ContainsString(at, "x"))
+	require.False(t, at.ContainsString(""))
+	require.False(t, at.ContainsString("x"))
 }
 
 func TestFull(t *testing.T) {
-	at := arraytrie.LoadString(arraytrie.LoadString(nil, "full"), "fu")
-	require.False(t, arraytrie.ContainsString(at, ""))
-	require.False(t, arraytrie.ContainsString(at, "x"))
-	require.False(t, arraytrie.ContainsString(at, "fullx"))
-	require.True(t, arraytrie.ContainsString(at, "full"))
-	require.True(t, arraytrie.ContainsString(at, "fu"))
+	at := arraytrie.New()
+	at.LoadString("full")
+	at.LoadString("fu")
+	require.False(t, at.ContainsString(""))
+	require.False(t, at.ContainsString("x"))
+	require.False(t, at.ContainsString("fullx"))
+	require.True(t, at.ContainsString("full"))
+	require.True(t, at.ContainsString("fu"))
 }
 
 func TestPermuteAll(t *testing.T) {
-	at := arraytrie.LoadString(arraytrie.LoadString(nil, "full"), "fu")
+	at := arraytrie.New()
+	at.LoadString("full")
+	at.LoadString("fu")
 	rets := []string{}
-	for _, ret := range arraytrie.PermuteAll(at, []byte("fulxd")) {
+	for _, ret := range at.PermuteAll([]byte("fulxd")) {
 		rets = append(rets, string(ret))
 	}
 	sort.Strings(rets)

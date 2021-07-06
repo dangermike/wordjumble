@@ -10,26 +10,30 @@ import (
 
 func TestEmpty(t *testing.T) {
 	mt := maptrie.New()
-	require.False(t, maptrie.ContainsString(mt, ""))
-	require.False(t, maptrie.ContainsString(mt, "x"))
+	require.False(t, mt.ContainsString(""))
+	require.False(t, mt.ContainsString("x"))
 	mt = nil
-	require.False(t, maptrie.ContainsString(mt, ""))
-	require.False(t, maptrie.ContainsString(mt, "x"))
+	require.False(t, mt.ContainsString(""))
+	require.False(t, mt.ContainsString("x"))
 }
 
 func TestFull(t *testing.T) {
-	mt := maptrie.LoadString(maptrie.LoadString(nil, "full"), "fu")
-	require.False(t, maptrie.ContainsString(mt, ""))
-	require.False(t, maptrie.ContainsString(mt, "x"))
-	require.False(t, maptrie.ContainsString(mt, "fullx"))
-	require.True(t, maptrie.ContainsString(mt, "full"))
-	require.True(t, maptrie.ContainsString(mt, "fu"))
+	mt := maptrie.New()
+	mt.LoadString("full")
+	mt.LoadString("fu")
+	require.False(t, mt.ContainsString(""))
+	require.False(t, mt.ContainsString("x"))
+	require.False(t, mt.ContainsString("fullx"))
+	require.True(t, mt.ContainsString("full"))
+	require.True(t, mt.ContainsString("fu"))
 }
 
 func TestPermuteAll(t *testing.T) {
-	mt := maptrie.LoadString(maptrie.LoadString(nil, "full"), "fu")
+	mt := maptrie.New()
+	mt.LoadString("full")
+	mt.LoadString("fu")
 	rets := []string{}
-	for _, ret := range maptrie.PermuteAll(mt, []byte("fulxd")) {
+	for _, ret := range mt.PermuteAll([]byte("fulxd")) {
 		rets = append(rets, string(ret))
 	}
 	sort.Strings(rets)
