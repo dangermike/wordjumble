@@ -32,6 +32,27 @@ fee
 feed
 ```
 
+### REPL mode
+
+If no strings are provided, the application will present you with a prompt, `word>`. This is REPL (read-evaluate-print loop) mode. Strings can be entered here and they will be processed as normal. Exit the REPL with `^C` or `enter` on an empty line.
+
+```bash
+./wordjumble
+Loaded dictionary 2of12inf: 81,883 words
+words> abc
+baa
+cab
+words> def
+deed
+deeded
+def
+ed
+fed
+fee
+feed
+words>
+```
+
 ### List internal dictionaries
 
 ```bash
