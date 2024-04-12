@@ -62,7 +62,12 @@ func contains(at *trie, word []byte) bool {
 // PermuteAll returns all permutations of the provided letters, allowing
 // duplicates, that appear in the set of loaded words.
 func permuteAll(at *trie, letters []byte, consume bool) [][]byte {
-	retval := permuteInner(at, letters, consume)
+	var retval [][]byte
+	if consume {
+		retval = permuteInnerConsume(at, letters)
+	} else {
+		retval = permuteInner(at, letters)
+	}
 	for i := 0; i < len(retval); i++ {
 		// reverse by starting at each end and swapping as we go
 		for a, b := 0, len(retval[i])-1; a < b; a, b = a+1, b-1 {
@@ -74,7 +79,7 @@ func permuteAll(at *trie, letters []byte, consume bool) [][]byte {
 }
 
 // permuteInner builds up in reverse, which lets us avoid copying
-func permuteInner(at *trie, letters []byte, consume bool) [][]byte {
+func permuteInner(at *trie, letters []byte) [][]byte {
 	if at == nil {
 		return nil
 	}
@@ -87,15 +92,35 @@ func permuteInner(at *trie, letters []byte, consume bool) [][]byte {
 	for i := 0; i < len(letters); i++ {
 		letter := letters[i]
 		if at[letter] != nil {
-			next := letters
-			if consume {
-				letters[0], letters[i] = letters[i], letters[0]
-				next = next[1:]
-			}
-			for _, child := range permuteInner(at[letter], next, consume) {
+			for _, child := range permuteInner(at[letter], letters) {
 				retval = append(retval, append(child, letter))
 			}
 		}
+	}
+
+	return retval
+}
+
+// permuteInnerConsume builds up in reverse, which lets us avoid copying
+func permuteInnerConsume(at *trie, letters []byte) [][]byte {
+	if at == nil {
+		return nil
+	}
+
+	retval := [][]byte{}
+	if at[256] == hit {
+		retval = append(retval, []byte{})
+	}
+
+	for i := 0; i < len(letters); i++ {
+		letters[0], letters[i] = letters[i], letters[0]
+		if at[letters[0]] != nil {
+			for _, child := range permuteInnerConsume(at[letters[0]], letters[1:]) {
+				retval = append(retval, append(child, letters[0]))
+			}
+		}
+		// need to put it back since we didn't copy before permuting
+		letters[0], letters[i] = letters[i], letters[0]
 	}
 
 	return retval

@@ -4,20 +4,21 @@ import (
 	"bufio"
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/DataDog/zstd"
+	"github.com/klauspost/compress/zstd"
 
 	"github.com/dangermike/wordjumble/arraytrie"
 	"github.com/dangermike/wordjumble/logging"
 	"github.com/dangermike/wordjumble/maptrie"
 
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"go.uber.org/zap"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -25,59 +26,37 @@ import (
 
 var (
 	//go:embed dicts/*
-	f       embed.FS
-	newline = []byte("\n")
+	f embed.FS
 )
 
 func main() {
-	app := &cli.App{
-		Name:   "wordjumble",
-		Usage:  "permute letters against a dictionary",
-		Action: appMain,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "use-array",
-				Value: false,
-				Usage: "Use the arrayTrie implementation instead of the mapTrie",
-			},
-			&cli.StringFlag{
-				Name:    "dict",
-				Aliases: []string{"d"},
-				Value:   "2of12inf",
-				Usage:   "Name of the dictionary to use",
-			},
-			&cli.BoolFlag{
-				Name:    "verbose",
-				Aliases: []string{"v"},
-				Usage:   "Get wordy with those words",
-			},
-			&cli.BoolFlag{
-				Name:    "consume",
-				Aliases: []string{"c"},
-				Usage:   "Consume letters (only use each letter once)",
-			},
-			&cli.BoolFlag{
-				Name:    "all",
-				Aliases: []string{"a"},
-				Usage:   "Use all letters",
-			},
-		},
-		Commands: []*cli.Command{
-			{
-				Name:   "list",
-				Usage:  "Show available dictionaries",
-				Action: listMain,
-			},
-		},
+	cmdPermute := &cobra.Command{
+		Use:  "permute permute letters against a dictionary",
+		RunE: appMain,
+	}
+	AddFlags(cmdPermute.Flags())
+
+	cmdList := &cobra.Command{
+		Use:  "list Show available dictionaries",
+		RunE: listMain,
 	}
 
-	err := app.Run(os.Args)
-	if err != nil {
-		panic(err)
+	rootCmd := &cobra.Command{}
+	rootCmd.AddCommand(cmdPermute, cmdList)
+
+	// use the default cmd if no cmd is given
+	cmd, _, err := rootCmd.Find(os.Args[1:])
+	if (err == nil || strings.HasPrefix(err.Error(), "unknown command ")) && cmd == rootCmd && cmd.Flags().Parse(os.Args[1:]) != pflag.ErrHelp {
+		args := append([]string{cmdPermute.Name()}, os.Args[1:]...)
+		rootCmd.SetArgs(args)
+	}
+
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
 	}
 }
 
-func listMain(c *cli.Context) error {
+func listMain(cmd *cobra.Command, args []string) error {
 	entries, err := f.ReadDir("dicts")
 	if err != nil {
 		return nil
@@ -88,19 +67,26 @@ func listMain(c *cli.Context) error {
 	return nil
 }
 
-func appMain(c *cli.Context) error {
+func appMain(cmd *cobra.Command, args []string) error {
 	var t trie
 	logger := zap.NewNop()
-	if c.Bool("verbose") {
+
+	cfg, err := GetConfig(cmd.Flags())
+	if err != nil {
+		return err
+	}
+	cmd.SilenceUsage = true
+
+	if cfg.Verbose {
 		cfg := zap.NewProductionConfig()
 		cfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 		cfg.DisableCaller = true
 		logger, _ = cfg.Build()
 	}
 
-	ctx := logging.NewContext(c.Context, logger)
+	ctx := logging.NewContext(cmd.Context(), logger)
 
-	if c.Bool("use-array") {
+	if cfg.UseArray {
 		t = arraytrie.New()
 		logger.Debug("using array trie")
 	} else {
@@ -108,16 +94,15 @@ func appMain(c *cli.Context) error {
 		logger.Debug("using map trie")
 	}
 
-	if err := loadWords(ctx, c.String("dict"), t.Load); err != nil {
+	if err := loadWords(ctx, cfg.Dict, t.Load); err != nil {
 		return err
 	}
 
-	args := c.Args()
-	if 0 < args.Len() {
-		return runWords(ctx, args.Slice(), t, c.Bool("consume"), c.Bool("all"))
+	if 0 < len(args) {
+		return runWords(ctx, args, t, cfg.Consume, cfg.All)
 	}
-	message.NewPrinter(language.English).Printf("Loaded dictionary %s: %d words\n", c.String("dict"), t.Count())
-	return runREPL(ctx, t, c.Bool("consume"), c.Bool("all"))
+	message.NewPrinter(language.English).Printf("Loaded dictionary %s: %d words\n", cfg.Dict, t.Count())
+	return runREPL(ctx, t, cfg.Consume, cfg.All)
 }
 
 func runREPL(ctx context.Context, t trie, consume bool, all bool) error {
@@ -150,15 +135,17 @@ func runWord(ctx context.Context, word string, t trie, consume bool, all bool) {
 	start := time.Now()
 	cnt := 0
 
+	bout := bufio.NewWriter(os.Stdout)
 	for _, outword := range t.PermuteAll([]byte(word), consume) {
 		if all && len(word) != len(outword) {
 			continue
 		}
-		os.Stdout.Write(outword)
-		os.Stdout.Write(newline)
+		bout.Write(outword)
+		bout.WriteByte('\n')
 		cnt++
 	}
-	logging.FromContext(ctx).Debug("permuted", zap.Int("count", cnt), zap.Duration("duration", time.Since(start)))
+	bout.Flush()
+	logging.FromContext(ctx).Debug("permuted", zap.String("word", word), zap.Int("count", cnt), zap.Duration("duration", time.Since(start)))
 }
 
 func loadWords(ctx context.Context, dict string, callback func(word []byte) bool) error {
@@ -166,23 +153,16 @@ func loadWords(ctx context.Context, dict string, callback func(word []byte) bool
 	if err != nil {
 		return err
 	}
-	reader := zstd.NewReader(f)
+	reader, err := zstd.NewReader(f)
+	if err != nil {
+		return err
+	}
 	defer reader.Close()
-	breader := bufio.NewReader(reader)
+	scn := bufio.NewScanner(reader)
 	cnt := 0
 	start := time.Now()
-	for {
-		line, isprefix, err := breader.ReadLine()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		if isprefix {
-			return errors.New("Buffer not long enough to hold line")
-		}
-		if !callback(line) {
+	for scn.Scan() {
+		if !callback(scn.Bytes()) {
 			break
 		}
 		cnt++

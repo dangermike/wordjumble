@@ -1,6 +1,8 @@
 package maptrie
 
-import helper "github.com/dangermike/wordjumble/trie"
+import (
+	helper "github.com/dangermike/wordjumble/trie"
+)
 
 type Trie struct {
 	trie  trie

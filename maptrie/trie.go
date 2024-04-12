@@ -1,6 +1,8 @@
 package maptrie
 
-import helper "github.com/dangermike/wordjumble/trie"
+import (
+	helper "github.com/dangermike/wordjumble/trie"
+)
 
 type trie map[byte]trie
 
@@ -35,7 +37,12 @@ func contains(mt trie, word []byte) bool {
 // PermuteAll returns all permutations of the provided letters, allowing
 // duplicates, that appear in the set of loaded words.
 func permuteAll(mt trie, letters []byte, consume bool) [][]byte {
-	retval := permuteInner(mt, letters, consume)
+	var retval [][]byte
+	if consume {
+		retval = permuteInnerConsume(mt, letters)
+	} else {
+		retval = permuteInner(mt, letters)
+	}
 	for i := 0; i < len(retval); i++ {
 		// reverse by starting at each end and swapping as we go
 		for a, b := 0, len(retval[i])-1; a < b; a, b = a+1, b-1 {
@@ -46,7 +53,7 @@ func permuteAll(mt trie, letters []byte, consume bool) [][]byte {
 }
 
 // permuteInner builds up in reverse, which lets us avoid copying
-func permuteInner(mt trie, letters []byte, consume bool) [][]byte {
+func permuteInner(mt trie, letters []byte) [][]byte {
 	if mt == nil {
 		return nil
 	}
@@ -60,14 +67,36 @@ func permuteInner(mt trie, letters []byte, consume bool) [][]byte {
 		letter := letters[i]
 		if mt[letter] != nil {
 			next := letters
-			if consume {
-				letters[0], letters[i] = letters[i], letters[0]
-				next = next[1:]
-			}
-			for _, child := range permuteInner(mt[letter], next, consume) {
+			for _, child := range permuteInner(mt[letter], next) {
 				retval = append(retval, append(child, letter))
 			}
 		}
+	}
+
+	return retval
+}
+
+// permuteInnerConsume builds up in reverse, which lets us avoid copying
+func permuteInnerConsume(mt trie, letters []byte) [][]byte {
+	if mt == nil {
+		return nil
+	}
+
+	retval := [][]byte{}
+	if mt[0] != nil {
+		retval = append(retval, []byte{})
+	}
+
+	for i := 0; i < len(letters); i++ {
+		letters[0], letters[i] = letters[i], letters[0]
+		if mt[letters[0]] != nil {
+			next := letters[1:]
+			for _, child := range permuteInnerConsume(mt[letters[0]], next) {
+				retval = append(retval, append(child, letters[0]))
+			}
+		}
+		// need to put it back because we didn't copy before recursing
+		letters[0], letters[i] = letters[i], letters[0]
 	}
 
 	return retval
