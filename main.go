@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/zstd"
+	"github.com/mattn/go-isatty"
 
 	"github.com/dangermike/wordjumble/arraytrie"
 	"github.com/dangermike/wordjumble/logging"
@@ -98,9 +99,43 @@ func appMain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if 0 < len(args) {
-		return runWords(ctx, args, t, cfg.Consume, cfg.All)
+	var cnt int
+	bout := bufio.NewWriter(os.Stdout)
+	defer bout.Flush()
+	cb := func(w []byte) {
+		if cnt > 0 {
+			bout.WriteString("------\n")
+		}
+		bout.Write(w)
+		bout.WriteRune('\n')
 	}
+
+	doRepl := 0 == len(args) && isatty.IsTerminal(os.Stdin.Fd())
+	if 0 < len(args) {
+		for _, w := range args {
+			runWord(ctx, w, t, cfg.Consume, cfg.All, cb)
+			cnt++
+		}
+	}
+
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		scn := bufio.NewScanner(os.Stdin)
+		scn.Split(bufio.ScanWords)
+		for scn.Scan() {
+			if len(scn.Text()) == 0 {
+				continue
+			}
+			// fmt.Println("word:", scn.Text())
+			runWord(ctx, scn.Text(), t, cfg.Consume, cfg.All, cb)
+			cnt++
+		}
+		return nil
+	}
+
+	if !doRepl {
+		return nil
+	}
+
 	message.NewPrinter(language.English).Printf("Loaded dictionary %s: %d words\n", cfg.Dict, t.Count())
 	return runREPL(ctx, t, cfg.Consume, cfg.All)
 }
@@ -108,12 +143,18 @@ func appMain(cmd *cobra.Command, args []string) error {
 func runREPL(ctx context.Context, t trie, consume bool, all bool) error {
 	s := bufio.NewScanner(os.Stdin)
 	os.Stdout.WriteString("words> ")
+	bout := bufio.NewWriter(os.Stdout)
+	defer bout.Flush()
 	for s.Scan() {
 		if s.Text() == "" {
 			return nil
 		}
-		runWord(ctx, s.Text(), t, consume, all)
-		os.Stdout.WriteString("words> ")
+		runWord(ctx, s.Text(), t, consume, all, func(w []byte) {
+			bout.Write(w)
+			bout.WriteRune('\n')
+		})
+		bout.WriteString("words> ")
+		bout.Flush()
 	}
 	if s.Err() == io.EOF {
 		return nil
@@ -121,17 +162,7 @@ func runREPL(ctx context.Context, t trie, consume bool, all bool) error {
 	return s.Err()
 }
 
-func runWords(ctx context.Context, words []string, t trie, consume bool, all bool) error {
-	for i, word := range words {
-		if i > 0 {
-			fmt.Println("------")
-		}
-		runWord(ctx, word, t, consume, all)
-	}
-	return nil
-}
-
-func runWord(ctx context.Context, word string, t trie, consume bool, all bool) {
+func runWord(ctx context.Context, word string, t trie, consume bool, all bool, cb func([]byte)) {
 	start := time.Now()
 	cnt := 0
 
@@ -140,8 +171,7 @@ func runWord(ctx context.Context, word string, t trie, consume bool, all bool) {
 		if all && len(word) != len(outword) {
 			continue
 		}
-		bout.Write(outword)
-		bout.WriteByte('\n')
+		cb(outword)
 		cnt++
 	}
 	bout.Flush()
