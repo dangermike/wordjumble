@@ -103,9 +103,6 @@ func appMain(cmd *cobra.Command, args []string) error {
 	bout := bufio.NewWriter(os.Stdout)
 	defer bout.Flush()
 	cb := func(w []byte) {
-		if cnt > 0 {
-			bout.WriteString("------\n")
-		}
 		bout.Write(w)
 		bout.WriteRune('\n')
 	}
@@ -113,6 +110,9 @@ func appMain(cmd *cobra.Command, args []string) error {
 	doRepl := 0 == len(args) && isatty.IsTerminal(os.Stdin.Fd())
 	if 0 < len(args) {
 		for _, w := range args {
+			if cnt > 0 {
+				bout.WriteString("------\n")
+			}
 			runWord(ctx, w, t, cfg.Consume, cfg.All, cb)
 			cnt++
 		}
@@ -125,7 +125,9 @@ func appMain(cmd *cobra.Command, args []string) error {
 			if len(scn.Text()) == 0 {
 				continue
 			}
-			// fmt.Println("word:", scn.Text())
+			if cnt > 0 {
+				bout.WriteString("------\n")
+			}
 			runWord(ctx, scn.Text(), t, cfg.Consume, cfg.All, cb)
 			cnt++
 		}
