@@ -56,6 +56,11 @@ func main() {
 				Aliases: []string{"c"},
 				Usage:   "Consume letters (only use each letter once)",
 			},
+			&cli.BoolFlag{
+				Name:    "all",
+				Aliases: []string{"a"},
+				Usage:   "Use all letters",
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -109,20 +114,20 @@ func appMain(c *cli.Context) error {
 
 	args := c.Args()
 	if 0 < args.Len() {
-		return runWords(ctx, args.Slice(), t, c.Bool("consume"))
+		return runWords(ctx, args.Slice(), t, c.Bool("consume"), c.Bool("all"))
 	}
 	message.NewPrinter(language.English).Printf("Loaded dictionary %s: %d words\n", c.String("dict"), t.Count())
-	return runREPL(ctx, t, c.Bool("consume"))
+	return runREPL(ctx, t, c.Bool("consume"), c.Bool("all"))
 }
 
-func runREPL(ctx context.Context, t trie, consume bool) error {
+func runREPL(ctx context.Context, t trie, consume bool, all bool) error {
 	s := bufio.NewScanner(os.Stdin)
 	os.Stdout.WriteString("words> ")
 	for s.Scan() {
 		if s.Text() == "" {
 			return nil
 		}
-		runWord(ctx, s.Text(), t, consume)
+		runWord(ctx, s.Text(), t, consume, all)
 		os.Stdout.WriteString("words> ")
 	}
 	if s.Err() == io.EOF {
@@ -131,22 +136,25 @@ func runREPL(ctx context.Context, t trie, consume bool) error {
 	return s.Err()
 }
 
-func runWords(ctx context.Context, words []string, t trie, consume bool) error {
+func runWords(ctx context.Context, words []string, t trie, consume bool, all bool) error {
 	for i, word := range words {
 		if i > 0 {
 			fmt.Println("------")
 		}
-		runWord(ctx, word, t, consume)
+		runWord(ctx, word, t, consume, all)
 	}
 	return nil
 }
 
-func runWord(ctx context.Context, word string, t trie, consume bool) {
+func runWord(ctx context.Context, word string, t trie, consume bool, all bool) {
 	start := time.Now()
 	cnt := 0
 
-	for _, word := range t.PermuteAll([]byte(word), consume) {
-		os.Stdout.Write(word)
+	for _, outword := range t.PermuteAll([]byte(word), consume) {
+		if all && len(word) != len(outword) {
+			continue
+		}
+		os.Stdout.Write(outword)
 		os.Stdout.Write(newline)
 		cnt++
 	}
