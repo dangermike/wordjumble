@@ -1,13 +1,16 @@
 package trie_test
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"sort"
 	"testing"
 
 	"github.com/dangermike/wordjumble/arraytrie"
 	"github.com/dangermike/wordjumble/maptrie"
 	"github.com/dangermike/wordjumble/trie"
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 )
 
@@ -90,5 +93,30 @@ func TestPermuteAll(t *testing.T) {
 				require.Equal(t, test.expected, rets)
 			})
 		}
+	}
+}
+
+func BenchmarkPermuteAll(b *testing.B) {
+	for _, test := range []struct {
+		name string
+		new  func() trie.Trie
+	}{
+		{"arraytrie", arraytrie.New},
+		{"maptrie", maptrie.New},
+	} {
+		b.Run(test.name, func(b *testing.B) {
+			f, err := os.Open("../dicts/2of12inf.zst")
+			require.NoError(b, err)
+			defer f.Close()
+			zr, err := zstd.NewReader(f)
+			require.NoError(b, err)
+			defer zr.Close()
+			scn := bufio.NewScanner(zr)
+
+			tr := test.new()
+			for scn.Scan() {
+				tr.Load(scn.Bytes())
+			}
+		})
 	}
 }
